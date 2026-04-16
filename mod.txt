@@ -1,0 +1,12 @@
+[mod]
+name="ImmersiveInventory"
+id="immersive-inventory"
+version="0.2.0"
+description="Equipment-driven inventory layout with a 2-row base and slot-based expansion."
+
+[autoload]
+ImmersiveInventoryConfig="res://mods/ImmersiveInventory/Config.gd"
+ImmersiveInventoryMain="res://mods/ImmersiveInventory/Main.gd"
+
+[updates]
+modworkshop=56168

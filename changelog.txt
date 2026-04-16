@@ -1,0 +1,8 @@
+Todo:
+- Change the vest layout to have mag space where you only can place mags in
+- Equip backpacks when there are on the ground
+- MCM let the player decide if he wants a pocket place
+
+Bugs:
+- Items in the container (not pocket) do not get registered by the Trader
+- When transitioning items get lost in the containers
