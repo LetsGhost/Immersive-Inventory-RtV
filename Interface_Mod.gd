@@ -15,7 +15,7 @@ const MOD_SCROLLBAR_GAP := 4.0
 const MOD_TOTAL_WIDTH := MOD_VIEW_WIDTH + MOD_SCROLLBAR_GAP + MOD_SCROLLBAR_WIDTH
 const GAME_UI_THEME := preload("res://UI/Themes/Theme.tres")
 const GRID_TEXTURE := preload("res://UI/Sprites/Tile.png")
-const POCKETS_GRID_SIZE := Vector2(BASE_WIDTH, BASE_ROWS)
+const POCKETS_GRID_SIZE := Vector2(5, 1)
 const PANTS_GRID_SIZE := Vector2(2, 1)
 const JACKET_GRID_SIZE := Vector2(6, 1)
 const CHEST_RIG_GRID_SIZE := Vector2(8, 2)
@@ -26,7 +26,7 @@ const JAAKARI_WEAPON_HINT_NAME := "JaakariWeaponHint"
 const JAAKARI_WEAPON_SLOT_POSITION := Vector2(0.0, 384.0)
 const SECTION_SPACING := 18.0
 const SECTION_CONTAINER_NAME := "EquipmentInventorySectionContainer"
-const SECTION_NAMES: Array[String] = ["Pants", "Jacket", "Chest Rig", "Belt", "Backpack"]
+const SECTION_NAMES: Array[String] = ["Pockets", "Pants", "Jacket", "Chest Rig", "Belt", "Backpack"]
 const DEFAULT_BONUS_SLOT_NAMES: Array[String] = ["Backpack", "Rig", "Torso", "Legs", "Belt"]
 const FALLBACK_SLOT_BONUS_ROWS: Dictionary = {
 	"Backpack": 3,
@@ -176,13 +176,14 @@ func _try_place_in_inventory_grids(targetItem) -> bool:
 
 func _get_active_inventory_target_grids() -> Array:
 	var grids: Array = []
-	if inventoryGrid:
-		grids.append(inventoryGrid)
-
 	for sectionName in SECTION_NAMES:
 		var sectionGrid: Grid = _get_or_create_section_grid(sectionName)
 		if sectionGrid && sectionGrid.visible:
 			grids.append(sectionGrid)
+
+	# Last-resort backend when visible sections are full.
+	if inventoryGrid:
+		grids.append(inventoryGrid)
 
 	return grids
 
@@ -236,6 +237,7 @@ func _sync_inventory_layout(forceDrop: bool) -> void:
 		configNode.ReloadFromDisk()
 
 	_ensure_fixed_inventory_grid()
+	_set_backend_inventory_visibility()
 	_sync_container_layout(forceDrop)
 
 	var unlockedRows: int = _get_unlocked_rows()
@@ -250,6 +252,15 @@ func _sync_inventory_layout(forceDrop: bool) -> void:
 	_ensure_scrollbar()
 	_sync_inventory_scrollbar(unlockedRows)
 	_sync_jaakari_weapon_slot()
+
+func _set_backend_inventory_visibility() -> void:
+	if inventoryGrid == null:
+		return
+
+	# Keep vanilla grid alive as backend only.
+	inventoryGrid.visible = false
+	inventoryGrid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 func _ensure_fixed_inventory_grid() -> void:
 	if inventoryGrid == null:
 		return
@@ -289,7 +300,7 @@ func _sync_container_layout(forceDrop: bool) -> void:
 	var inventoryHeader: Label = inventoryUI.get_node_or_null("Header/Label")
 	if inventoryHeader:
 		inventoryHeader.text = "Inventory"
-	var currentY: float = MOD_HEADER_HEIGHT + float(int(inventoryGrid.gridHeight) * int(inventoryGrid.cellSize)) + SECTION_SPACING
+	var currentY: float = MOD_HEADER_HEIGHT + SECTION_SPACING
 	var activeSections: Array[String] = _get_active_section_names()
 	print("[ImmersiveInventoryMod] Active sections=%s" % [str(activeSections)])
 
@@ -613,6 +624,7 @@ func _get_equipped_slot_display_name(sectionName: String) -> String:
 
 func _get_active_section_names() -> Array[String]:
 	var names: Array[String] = []
+	names.append("Pockets")
 	if _slot_has_equipped_item("Legs"):
 		names.append("Pants")
 	if _slot_has_equipped_item("Torso"):
@@ -803,9 +815,6 @@ func _get_config_node():
 
 func GetInventoryGrids() -> Array:
 	var grids: Array = []
-	if inventoryGrid:
-		grids.append(inventoryGrid)
-
 	for sectionName in SECTION_NAMES:
 		var sectionGrid: Grid = _get_or_create_section_grid(sectionName)
 		if sectionGrid && sectionGrid.visible:
@@ -814,9 +823,6 @@ func GetInventoryGrids() -> Array:
 	return grids
 
 func GetInventorySectionGrid(sectionName: String):
-	if sectionName == "Pockets":
-		return inventoryGrid
-
 	var sectionGrid: Grid = _get_or_create_section_grid(sectionName)
 	if sectionGrid && sectionGrid.visible:
 		return sectionGrid
@@ -825,11 +831,6 @@ func GetInventorySectionGrid(sectionName: String):
 
 func GetHoverItem():
 	var contextVisible: bool = context != null && context.visible
-
-	if inventoryGrid && inventoryGrid.is_visible_in_tree():
-		for element in inventoryGrid.get_children():
-			if element.get_global_rect().has_point(mousePosition) && element is Item && element != itemDragged && !contextVisible:
-				return element
 
 	if containerGrid && containerGrid.is_visible_in_tree():
 		for element in containerGrid.get_children():
@@ -859,8 +860,6 @@ func GetHoverItem():
 
 func GetHoverGrid():
 	var grids: Array = []
-	if inventoryGrid:
-		grids.append(inventoryGrid)
 	if containerGrid:
 		grids.append(containerGrid)
 	if catalogGrid:
