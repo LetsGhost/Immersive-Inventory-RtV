@@ -401,6 +401,7 @@ func _sync_jaakari_weapon_slot() -> void:
 		slotSizeCells = configNode.get_jaakari_weapon_slot_size()
 
 	var targetLocalPosition: Vector2 = _get_jaakari_weapon_local_position(slotSizeCells)
+	targetLocalPosition.y -= float(_inventory_scroll_rows) * MOD_CELL_SIZE
 	slotNode.visible = true
 	slotNode.position = targetLocalPosition
 	slotNode.size = Vector2(float(int(slotSizeCells.x)) * float(cellSize), float(int(slotSizeCells.y)) * float(cellSize))
@@ -420,8 +421,9 @@ func _get_jaakari_weapon_local_position(slotSizeCells: Vector2) -> Vector2:
 func _sync_jaakari_weapon_slot_position(contentBottomY: float) -> void:
 	var weaponSlot: Slot = _ensure_jaakari_weapon_slot()
 	if weaponSlot:
-		var slotSize: Vector2 = weaponSlot.size if weaponSlot.size != Vector2.ZERO else Vector2(MOD_CELL_SIZE, MOD_CELL_SIZE)
-		weaponSlot.position = _get_jaakari_weapon_local_position(Vector2.ONE)
+		var targetPos: Vector2 = _get_jaakari_weapon_local_position(Vector2.ONE)
+		targetPos.y -= float(_inventory_scroll_rows) * MOD_CELL_SIZE
+		weaponSlot.position = targetPos
 		var hint: Label = weaponSlot.hint
 		if hint:
 			hint.position = weaponSlot.position + Vector2(0.0, -18.0)
@@ -984,9 +986,7 @@ func _unhandled_input(event) -> void:
 
 func _reset_inventory_scroll_to_top() -> void:
 	_inventory_scroll_rows = 0
-
-	if inventoryGrid:
-		inventoryGrid.position.y = MOD_HEADER_HEIGHT
+	_apply_inventory_scroll_offset()
 
 	var scrollbar = inventoryUI.get_node_or_null(MOD_SCROLLBAR_NAME)
 	if scrollbar:
@@ -1028,6 +1028,9 @@ func _apply_inventory_scroll_offset() -> void:
 	# Section nodes are already laid out with absolute Y in _sync_container_layout,
 	# so only apply scroll delta here to avoid adding the base offset twice.
 	_inventory_section_container.position.y = offsetY
+
+	# Keep Jaakari slot synced with the same scroll transform.
+	_sync_jaakari_weapon_slot_position(_last_inventory_content_bottom_y)
 
 func _get_max_scroll_rows() -> int:
 	var totalContentHeight: float = 0.0
